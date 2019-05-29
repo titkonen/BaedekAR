@@ -183,8 +183,13 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     
     
     
-    let isArtImage = true
-    var statusMessage = "Found \(artworkDisplayNames[imageName] ?? "artwork")"
+    let isArtImage = !imageName.hasPrefix("block_this-")
+    var statusMessage = ""
+    if isArtImage {
+      statusMessage = "Found \(artworkDisplayNames[imageName] ?? "artwork")."
+    } else {
+      statusMessage = "Unpleasant image blocked."
+    }
     
     DispatchQueue.main.async {
       self.statusViewController.cancelAllScheduledMessages()
@@ -194,24 +199,27 @@ class ViewController: UIViewController, ARSCNViewDelegate {
 
     // Draw the appropriate plane over the image.
     updateQueue.async {
-      var planeNode = self.createArtworkPlaneNode(withReferenceImage: referenceImage, andImageName: imageName)
-      planeNode.eulerAngles.x = -.pi / 2
-      node.addChildNode(planeNode)
+      var planeNode = SCNNode()
+      
 
       if isArtImage {
         // If the detected artwork is one that we’d like to highlight (and one which we’d
         // like the user to tap to find out more), draw an “artwork” plane and
         // the name of the artwork over the image.
-
+        planeNode = self.createArtworkPlaneNode(withReferenceImage: referenceImage, andImageName: imageName)
+        let nameNode = self.createArtworkNameNode(withImageName: imageName)
+        node.addChildNode(nameNode)
+        
       } else {
         // If the detected artwork is one that we’d like to obscure,
         // draw a “blocker” plane over the image.
-
+        planeNode = self.createBlockerPlaneNode(withReferenceImage: referenceImage, andImageName: imageName)
+        planeNode.name = self.blockedName
       }
 
       // Rotate the newly-created plane by 90 degrees clockwise around the x-axis
       // so that it’s vertical.
-
+      planeNode.eulerAngles.x = -.pi / 2
 
       // Add the plane node to the scene.
 
@@ -266,7 +274,11 @@ class ViewController: UIViewController, ARSCNViewDelegate {
   func createBlockerPlaneNode(withReferenceImage referenceImage: ARReferenceImage,
                               andImageName imageName: String) -> SCNNode {
     // Draw the plane.
-    return SCNNode()
+    let plane = SCNPlane(width: referenceImage.physicalSize.width * 2.0, height: referenceImage.physicalSize.height * 2.0)
+    let planeNode = SCNNode(geometry: plane)
+    planeNode.geometry?.firstMaterial?.diffuse.contents = UIImage(named: "ray")
+    planeNode.name = imageName
+    return planeNode
   }
 
   // Create a text node to display the name of an artwork.
